@@ -7,7 +7,6 @@ use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\block\SignChangeEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerInteractEvent;
-use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\level\Position;
 use pocketmine\math\Vector3;
@@ -40,6 +39,8 @@ class EventListener implements Listener
                 if ($shopInfo['shopOwner'] === $player->getName()) {
                     $player->sendMessage("Cannot purchase from your own shop!");
                     return;
+                }else{
+                	$event->setCancelled();
                 }
                 $buyerMoney = $this->plugin->getServer()->getPluginManager()->getPlugin("PocketMoney")->getMoney($player->getName());
                 if (!is_numeric($buyerMoney)) { // Probably $buyerMoney is instance of SimpleError
@@ -63,19 +64,19 @@ class EventListener implements Listener
                 if ($itemNum < $shopInfo['saleNum']) {
                     $player->sendMessage("This shop is out of stock!");
                     if (($p = $this->plugin->getServer()->getPlayer($shopInfo['shopOwner'])) !== null) {
-                        $p->sendMessage("Your ChestShop is out of stock! Replenish ID:$pID!");
+                        $p->sendMessage("Your ChestShop is out of stock! Replenish Item: ".ItemFactory::get($pID, $pMeta)->getName());
                     }
                     return;
                 }
 
-                $item = Item::get((int)$shopInfo['productID'], (int)$shopInfo['productMeta'], (int)$shopInfo['saleNum']);
+                $item = ItemFactory::get((int)$shopInfo['productID'], (int)$shopInfo['productMeta'], (int)$shopInfo['saleNum']);
                 $chest->getInventory()->removeItem($item);
                 $player->getInventory()->addItem($item);
                 $this->plugin->getServer()->getPluginManager()->getPlugin("PocketMoney")->payMoney($player->getName(), $shopInfo['shopOwner'], $shopInfo['price']);
 
                 $player->sendMessage("Completed transaction");
                 if (($p = $this->plugin->getServer()->getPlayer($shopInfo['shopOwner'])) !== null) {
-                    $p->sendMessage("{$player->getName()} purchased ID:$pID:$pMeta {$shopInfo['price']}PM");
+                    $p->sendMessage("{$player->getName()} purchased ".ItemFactory::get($pID, $pMeta)->getName()." for ".$shopInfo['price']."PM");
                 }
                 break;
 
@@ -85,7 +86,7 @@ class EventListener implements Listener
                     "chestY" => $block->getY(),
                     "chestZ" => $block->getZ()
                 ]);
-                if ($shopInfo !== false && $shopInfo['shopOwner'] !== $player->getName()) {
+                if ($shopInfo !== false and $shopInfo['shopOwner'] !== $player->getName()) {
                     $player->sendMessage("This chest has been protected!");
                     $event->setCancelled();
                 }
@@ -160,11 +161,11 @@ class EventListener implements Listener
         if ($pID === false) return;
         if (($chest = $this->getSideChest($sign)) === false) return;
 
-        $productName = Block::get($pID)->getName();
+        $productName = ItemFactory::get($pID, $pMeta)->getName();
         $event->setLine(0, $shopOwner);
-        $event->setLine(1, "Amount:$saleNum");
-        $event->setLine(2, "Price:$price");
-        $event->setLine(3, "$productName:$pMeta");
+        $event->setLine(1, "Amount: $saleNum");
+        $event->setLine(2, "Price: $price");
+        $event->setLine(3, $productName);
 
         $this->databaseManager->registerShop($shopOwner, $saleNum, $price, $pID, $pMeta, $sign, $chest);
     }
@@ -175,6 +176,8 @@ class EventListener implements Listener
         if ($block->getID() === Block::CHEST) return $block;
         $block = $pos->getLevel()->getBlock(new Vector3($pos->getX() - 1, $pos->getY(), $pos->getZ()));
         if ($block->getID() === Block::CHEST) return $block;
+	    $block = $pos->getLevel()->getBlock(new Vector3($pos->getX(), $pos->getY() - 1, $pos->getZ()));
+	    if ($block->getID() === Block::CHEST) return $block;
         $block = $pos->getLevel()->getBlock(new Vector3($pos->getX(), $pos->getY(), $pos->getZ() + 1));
         if ($block->getID() === Block::CHEST) return $block;
         $block = $pos->getLevel()->getBlock(new Vector3($pos->getX(), $pos->getY(), $pos->getZ() - 1));
