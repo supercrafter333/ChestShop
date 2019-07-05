@@ -27,3 +27,13 @@ permissions:
           chestshop.command.id:
             default: true
             description: "Allows searching item ID"
+      chestshop.makeshop:
+        default: op
+        description: "Allows making chest shops"
+        children:
+          chestshop.makeshop.1:
+            default: true
+            description: "Allows making 1 chest shop"
+          chestshop.makeshop.unlimited:
+            default: op
+            description: "Allows making unlimited chest shops"

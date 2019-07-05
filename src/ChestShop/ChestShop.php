@@ -5,6 +5,9 @@ namespace ChestShop;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\item\ItemIds;
+use pocketmine\permission\Permission;
+use pocketmine\permission\PermissionManager;
+use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
 
 class ChestShop extends PluginBase
@@ -32,5 +35,32 @@ class ChestShop extends PluginBase
             default:
                 return false;
         }
+    }
+
+	/**
+	 * Get the maximum number of shops a player can create
+	 *
+	 * @param Player $player
+	 *
+	 * @return int
+	 */
+	public function getMaxPlayerShops(Player $player) : int {
+    	if($player->hasPermission("chestshop.makeshop.unlimited"))
+    		return PHP_INT_MAX;
+	    /** @var Permission[] $perms */
+	    $perms = array_merge(PermissionManager::getInstance()->getDefaultPermissions($player->isOp()), $player->getEffectivePermissions());
+	    $perms = array_filter($perms, function($name) {
+		    return (substr($name, 0, 19) === "chestshop.makeshop.");
+	    }, ARRAY_FILTER_USE_KEY);
+	    if(count($perms) === 0)
+		    return 0;
+	    krsort($perms, SORT_FLAG_CASE | SORT_NATURAL);
+	    foreach($perms as $name => $perm) {
+		    $maxPlots = substr($name, 19);
+		    if(is_numeric($maxPlots)) {
+			    return (int) $maxPlots;
+		    }
+	    }
+	    return 0;
     }
 }
