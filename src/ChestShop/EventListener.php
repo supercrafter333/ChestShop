@@ -163,6 +163,8 @@ class EventListener implements Listener
         if (!is_numeric($price) or $price < 0) return;
         if ($pID === false) return;
         if (($chest = $this->getSideChest($sign)) === false) return;
+        $shops = $this->databaseManager->selectByCondition(["shopOwner" => $shopOwner]);
+        if(!is_array($shops) or count($shops) + 1 > $this->plugin->getMaxPlayerShops($event->getPlayer())) return;
 
         $productName = ItemFactory::get($pID, $pMeta)->getName();
         $event->setLine(0, $shopOwner);
