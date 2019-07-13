@@ -115,7 +115,7 @@ class EventListener implements Listener
                 ];
                 $shopInfo = $this->databaseManager->selectByCondition($condition);
                 if ($shopInfo !== false) {
-                    if ($shopInfo['shopOwner'] !== $player->getName()) {
+                    if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.deleteshop")) {
                         $player->sendMessage("This sign has been protected!");
                         $event->setCancelled();
                     } else {
@@ -133,7 +133,7 @@ class EventListener implements Listener
                 ];
                 $shopInfo = $this->databaseManager->selectByCondition($condition);
                 if ($shopInfo !== false) {
-                    if ($shopInfo['shopOwner'] !== $player->getName()) {
+                    if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.deleteshop")) {
                         $player->sendMessage("This chest has been protected!");
                         $event->setCancelled();
                     } else {
