@@ -22,6 +22,8 @@ class ChestShop extends PluginBase
         switch ($command->getName()) {
             case "id":
                 $name = array_shift($args);
+                if(empty($name))
+                	return false;
                 $constants = array_keys((new \ReflectionClass(ItemIds::class))->getConstants());
                 foreach ($constants as $constant) {
                     if (stripos($constant, $name) !== false) {
