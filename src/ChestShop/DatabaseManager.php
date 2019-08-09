@@ -57,7 +57,12 @@ class DatabaseManager
     public function selectByCondition(array $condition)
     {
         $where = $this->formatCondition($condition);
-        return ($res = $this->database->query("SELECT * FROM ChestShop WHERE $where")) === false ? false : $res->fetchArray(SQLITE3_ASSOC);
+        $res = false;
+        try{
+	        $res = $this->database->query("SELECT * FROM ChestShop WHERE $where");
+        }finally{
+	        return $res === false ? false : $res->fetchArray(SQLITE3_ASSOC);
+        }
     }
 
     /**
