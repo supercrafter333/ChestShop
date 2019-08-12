@@ -73,13 +73,18 @@ class EventListener implements Listener
 				$item = ItemFactory::get((int)$shopInfo['productID'], (int)$shopInfo['productMeta'], (int)$shopInfo['saleNum']);
 				$chest->getInventory()->removeItem($item);
 				$player->getInventory()->addItem($item);
-				if(EconomyAPI::getInstance()->reduceMoney($player->getName(), $shopInfo['price'], false, "ChestShop") === EconomyAPI::RET_SUCCESS) {
-					EconomyAPI::getInstance()->addMoney($shopInfo['shopOwner'], $shopInfo['price'], false, "ChestShop");
-				}
-
-				$player->sendMessage("Completed transaction");
-				if (($p = $this->plugin->getServer()->getPlayer($shopInfo['shopOwner'])) !== null) {
-					$p->sendMessage("{$player->getName()} purchased ".ItemFactory::get($pID, $pMeta)->getName()." for ".EconomyAPI::getInstance()->getMonetaryUnit().$shopInfo['price']);
+				$sellerMoney = EconomyAPI::getInstance()->myMoney($shopInfo['shopOwner']);
+				if(EconomyAPI::getInstance()->reduceMoney($player->getName(), $shopInfo['price'], false, "ChestShop") === EconomyAPI::RET_SUCCESS and EconomyAPI::getInstance()->addMoney($shopInfo['shopOwner'], $shopInfo['price'], false, "ChestShop") === EconomyAPI::RET_SUCCESS) {
+					$player->sendMessage("Completed transaction");
+					if (($p = $this->plugin->getServer()->getPlayer($shopInfo['shopOwner'])) !== null) {
+						$p->sendMessage("{$player->getName()} purchased ".ItemFactory::get($pID, $pMeta)->getName()." for ".EconomyAPI::getInstance()->getMonetaryUnit().$shopInfo['price']);
+					}
+				}else{
+					$player->getInventory()->removeItem($item);
+					$chest->getInventory()->addItem($item);
+					EconomyAPI::getInstance()->setMoney($player->getName(), $buyerMoney);
+					EconomyAPI::getInstance()->setMoney($shopInfo['shopOwner'], $sellerMoney);
+					$player->sendMessage("Transaction Failed");
 				}
 				break;
 
