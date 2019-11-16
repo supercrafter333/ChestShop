@@ -37,6 +37,9 @@ class EventListener implements Listener
 						"signY" => $block->getY(),
 						"signZ" => $block->getZ()
 					])) === false) return;
+				$shopInfo = $shopInfo->fetchArray(SQLITE3_ASSOC);
+				if($shopInfo === false)
+					return;
 				if ($shopInfo['shopOwner'] === $player->getName()) {
 					$player->sendMessage("Cannot purchase from your own shop!");
 					return;
@@ -94,6 +97,9 @@ class EventListener implements Listener
 					"chestY" => $block->getY(),
 					"chestZ" => $block->getZ()
 				]);
+				if($shopInfo === false)
+					break;
+				$shopInfo = $shopInfo->fetchArray(SQLITE3_ASSOC);
 				if ($shopInfo !== false and $shopInfo['shopOwner'] !== $player->getName()) {
 					$player->sendMessage("This chest has been protected!");
 					$event->setCancelled();
@@ -120,6 +126,9 @@ class EventListener implements Listener
 				];
 				$shopInfo = $this->databaseManager->selectByCondition($condition);
 				if ($shopInfo !== false) {
+					$shopInfo = $shopInfo->fetchArray();
+					if($shopInfo === false)
+						break;
 					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.deleteshop")) {
 						$player->sendMessage("This sign has been protected!");
 						$event->setCancelled();
@@ -138,6 +147,9 @@ class EventListener implements Listener
 				];
 				$shopInfo = $this->databaseManager->selectByCondition($condition);
 				if ($shopInfo !== false) {
+					$shopInfo = $shopInfo->fetchArray();
+					if($shopInfo === false)
+						break;
 					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.deleteshop")) {
 						$player->sendMessage("This chest has been protected!");
 						$event->setCancelled();
@@ -169,7 +181,15 @@ class EventListener implements Listener
 		if ($pID === false) return;
 		if (($chest = $this->getSideChest($sign)) === false) return;
 		$shops = $this->databaseManager->selectByCondition(["shopOwner" => "'$shopOwner'"]);
-		if(is_array($shops) and (count($shops) + 1 > $this->plugin->getMaxPlayerShops($event->getPlayer()))) return;
+		$res = true;
+		$count = [];
+		while ($res !== false) {
+			$res = $shops->fetchArray(SQLITE3_ASSOC);
+			if($res !== false)
+				$count[] = $res;
+		}
+		var_dump($count);
+		if(is_array($count) and (count($count) + 1 > $this->plugin->getMaxPlayerShops($event->getPlayer()))) return;
 
 		$productName = ItemFactory::get($pID, $pMeta)->getName();
 		$event->setLine(0, $shopOwner);
