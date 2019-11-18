@@ -188,8 +188,7 @@ class EventListener implements Listener
 			if($res !== false)
 				$count[] = $res;
 		}
-		var_dump($count);
-		if(is_array($count) and (count($count) + 1 > $this->plugin->getMaxPlayerShops($event->getPlayer()))) return;
+		if((count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()))) return;
 
 		$productName = ItemFactory::get($pID, $pMeta)->getName();
 		$event->setLine(0, $shopOwner);
