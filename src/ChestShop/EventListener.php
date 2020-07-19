@@ -185,11 +185,21 @@ class EventListener implements Listener
 		$count = [];
 		while ($res !== false) {
 			$res = $shops->fetchArray(SQLITE3_ASSOC);
-			if($res !== false)
+			if($res !== false) {
 				$count[] = $res;
+				if($res["signX"] === $event->getBlock()->getX() and $res["signY"] === $event->getBlock()->getY() and $res["signZ"] === $event->getBlock()->getZ()) {
+					$productName = ItemFactory::get($pID, $pMeta)->getName();
+					$event->setLine(0, $shopOwner);
+					$event->setLine(1, "Amount: $saleNum");
+					$event->setLine(2, "Price: ".EconomyAPI::getInstance()->getMonetaryUnit().$price);
+					$event->setLine(3, $productName);
+
+					$this->databaseManager->registerShop($shopOwner, $saleNum, $price, $pID, $pMeta, $sign, $chest);
+					return;
+				}
+			}
 		}
-		var_dump(count($count), $this->plugin->getMaxPlayerShops($event->getPlayer()));
-		if((count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()))) return;
+		if(empty($event->getLine(3)) or (count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()))) return;
 
 		$productName = ItemFactory::get($pID, $pMeta)->getName();
 		$event->setLine(0, $shopOwner);

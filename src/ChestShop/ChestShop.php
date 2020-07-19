@@ -52,7 +52,7 @@ class ChestShop extends PluginBase
 		/** @var Permission[] $perms */
 		$perms = array_merge(PermissionManager::getInstance()->getDefaultPermissions($player->isOp()), $player->getEffectivePermissions());
 		$perms = array_filter($perms, function($name) {
-			return (substr($name, 0, 19) === "chestshop.makeshop.");
+			return (substr($name, 0, 19) === "chestshop.makeshop.") and (strpos($name, "unlimited") === false);
 		}, ARRAY_FILTER_USE_KEY);
 		if(count($perms) === 0)
 			return 0;
