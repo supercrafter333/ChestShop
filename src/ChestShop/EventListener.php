@@ -12,6 +12,7 @@ use pocketmine\item\ItemFactory;
 use pocketmine\level\Position;
 use pocketmine\math\Vector3;
 use pocketmine\tile\Chest;
+use pocketmine\utils\TextFormat;
 
 class EventListener implements Listener
 {
@@ -199,7 +200,10 @@ class EventListener implements Listener
 				}
 			}
 		}
-		if(empty($event->getLine(3)) or (count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()))) return;
+		if(empty($event->getLine(3)) or (count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()))) {
+			$event->getPlayer()->sendMessage(TextFormat::RED."You don't have permission to make more shops");
+			return;
+		}
 
 		$productName = ItemFactory::get($pID, $pMeta)->getName();
 		$event->setLine(0, $shopOwner);
