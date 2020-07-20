@@ -200,7 +200,8 @@ class EventListener implements Listener
 				}
 			}
 		}
-		if(empty($event->getLine(3)) or (count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()))) {
+		if(empty($event->getLine(3))) return;
+		if(count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer())) {
 			$event->getPlayer()->sendMessage(TextFormat::RED."You don't have permission to make more shops");
 			return;
 		}
