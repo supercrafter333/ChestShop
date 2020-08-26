@@ -101,7 +101,7 @@ class EventListener implements Listener
 				if($shopInfo === false)
 					break;
 				$shopInfo = $shopInfo->fetchArray(SQLITE3_ASSOC);
-				if ($shopInfo !== false and $shopInfo['shopOwner'] !== $player->getName()) {
+				if ($shopInfo !== false and $shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
 					$player->sendMessage("This chest has been protected!");
 					$event->setCancelled();
 				}
@@ -130,7 +130,7 @@ class EventListener implements Listener
 					$shopInfo = $shopInfo->fetchArray();
 					if($shopInfo === false)
 						break;
-					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.deleteshop")) {
+					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
 						$player->sendMessage("This sign has been protected!");
 						$event->setCancelled();
 					} else {
@@ -151,7 +151,7 @@ class EventListener implements Listener
 					$shopInfo = $shopInfo->fetchArray();
 					if($shopInfo === false)
 						break;
-					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.deleteshop")) {
+					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
 						$player->sendMessage("This chest has been protected!");
 						$event->setCancelled();
 					} else {
@@ -201,7 +201,7 @@ class EventListener implements Listener
 			}
 		}
 		if(empty($event->getLine(3))) return;
-		if(count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer())) {
+		if(count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()) and !$event->getPlayer()->hasPermission("chestshop.admin")) {
 			$event->getPlayer()->sendMessage(TextFormat::RED."You don't have permission to make more shops");
 			return;
 		}

@@ -37,6 +37,6 @@ permissions:
           chestshop.makeshop.unlimited:
             default: op
             description: "Allows making unlimited chest shops"
-      chestshop.deleteshop:
+      chestshop.admin:
         default: op
-        description: "Allows deleting any chest shop"
+        description: "Allows administration of any chest shops"
