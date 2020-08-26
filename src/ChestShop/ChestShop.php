@@ -26,7 +26,7 @@ class ChestShop extends PluginBase
 					return false;
 				$constants = array_keys((new \ReflectionClass(ItemIds::class))->getConstants());
 				foreach ($constants as $constant) {
-					if (stripos($constant, $name) !== false) {
+					if (stripos($constant, (string)$name) !== false) {
 						$id = constant(ItemIds::class."::$constant");
 						$constant = str_replace("_", " ", $constant);
 						$sender->sendMessage("ID:$id $constant");
@@ -52,7 +52,7 @@ class ChestShop extends PluginBase
 		/** @var Permission[] $perms */
 		$perms = array_merge(PermissionManager::getInstance()->getDefaultPermissions($player->isOp()), $player->getEffectivePermissions());
 		$perms = array_filter($perms, function($name) {
-			return (substr($name, 0, 19) === "chestshop.makeshop.");
+			return (substr($name, 0, 19) === "chestshop.makeshop.") and (strpos($name, "unlimited") === false);
 		}, ARRAY_FILTER_USE_KEY);
 		if(count($perms) === 0)
 			return 0;

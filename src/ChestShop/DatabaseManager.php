@@ -52,7 +52,7 @@ class DatabaseManager
 
 	/**
 	 * @param array $condition
-	 * @return array|false
+	 * @return \SQLite3Result|false
 	 */
 	public function selectByCondition(array $condition)
 	{
@@ -61,7 +61,7 @@ class DatabaseManager
 		try{
 			$res = $this->database->query("SELECT * FROM ChestShop WHERE $where");
 		}finally{
-			return $res === false ? false : $res->fetchArray(SQLITE3_ASSOC);
+			return $res;
 		}
 	}
 

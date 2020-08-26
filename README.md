@@ -32,5 +32,11 @@ ChestShop is a plugin for allowing players to create their own item shops.
 * Item identifier command
 * MultiWorld Support
 
+# Future Additions
+* Custom Sign Formats
+* Multi-language support
+* Multi-Economy Support
+* Permissions Support
+
 # About
 The Plugin was originally authored by MinecrafterJPN. After completing most of the plugin, they went inactive, now Poggit Orphanage maintains it.

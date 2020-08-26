@@ -11,6 +11,7 @@ use pocketmine\item\ItemFactory;
 use pocketmine\level\Position;
 use pocketmine\math\Vector3;
 use pocketmine\tile\Chest;
+use pocketmine\utils\TextFormat;
 
 class EventListener implements Listener
 {
@@ -36,6 +37,9 @@ class EventListener implements Listener
 						"signY" => $block->getY(),
 						"signZ" => $block->getZ()
 					])) === false) return;
+				$shopInfo = $shopInfo->fetchArray(SQLITE3_ASSOC);
+				if($shopInfo === false)
+					return;
 				if ($shopInfo['shopOwner'] === $player->getName()) {
 					$player->sendMessage("Cannot purchase from your own shop!");
 					return;
@@ -86,7 +90,10 @@ class EventListener implements Listener
 					"chestY" => $block->getY(),
 					"chestZ" => $block->getZ()
 				]);
-				if ($shopInfo !== false and $shopInfo['shopOwner'] !== $player->getName()) {
+				if($shopInfo === false)
+					break;
+				$shopInfo = $shopInfo->fetchArray(SQLITE3_ASSOC);
+				if ($shopInfo !== false and $shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
 					$player->sendMessage("This chest has been protected!");
 					$event->setCancelled();
 				}
@@ -112,7 +119,10 @@ class EventListener implements Listener
 				];
 				$shopInfo = $this->databaseManager->selectByCondition($condition);
 				if ($shopInfo !== false) {
-					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.deleteshop")) {
+					$shopInfo = $shopInfo->fetchArray();
+					if($shopInfo === false)
+						break;
+					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
 						$player->sendMessage("This sign has been protected!");
 						$event->setCancelled();
 					} else {
@@ -130,7 +140,10 @@ class EventListener implements Listener
 				];
 				$shopInfo = $this->databaseManager->selectByCondition($condition);
 				if ($shopInfo !== false) {
-					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.deleteshop")) {
+					$shopInfo = $shopInfo->fetchArray();
+					if($shopInfo === false)
+						break;
+					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
 						$player->sendMessage("This chest has been protected!");
 						$event->setCancelled();
 					} else {
@@ -150,7 +163,7 @@ class EventListener implements Listener
 		$productData = explode(":", $event->getLine(3));
 		/** @var int|bool $pID */
 		$pID = $this->isItem($id = array_shift($productData)) ? (int)$id : false;
-		$pMeta = ($meta = array_shift($productData)) ? $meta : 0;
+		$pMeta = ($meta = array_shift($productData)) ? (int)$meta : 0;
 
 		$sign = $event->getBlock();
 
@@ -161,7 +174,29 @@ class EventListener implements Listener
 		if ($pID === false) return;
 		if (($chest = $this->getSideChest($sign)) === false) return;
 		$shops = $this->databaseManager->selectByCondition(["shopOwner" => "'$shopOwner'"]);
-		if(is_array($shops) and (count($shops) + 1 > $this->plugin->getMaxPlayerShops($event->getPlayer()))) return;
+		$res = true;
+		$count = [];
+		while ($res !== false) {
+			$res = $shops->fetchArray(SQLITE3_ASSOC);
+			if($res !== false) {
+				$count[] = $res;
+				if($res["signX"] === $event->getBlock()->getX() and $res["signY"] === $event->getBlock()->getY() and $res["signZ"] === $event->getBlock()->getZ()) {
+					$productName = ItemFactory::get($pID, $pMeta)->getName();
+					$event->setLine(0, $shopOwner);
+					$event->setLine(1, "Amount: $saleNum");
+					$event->setLine(2, "Price: $price");
+					$event->setLine(3, $productName);
+
+					$this->databaseManager->registerShop($shopOwner, $saleNum, $price, $pID, $pMeta, $sign, $chest);
+					return;
+				}
+			}
+		}
+		if(empty($event->getLine(3))) return;
+		if(count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()) and !$event->getPlayer()->hasPermission("chestshop.admin")) {
+			$event->getPlayer()->sendMessage(TextFormat::RED."You don't have permission to make more shops");
+			return;
+		}
 
 		$productName = ItemFactory::get($pID, $pMeta)->getName();
 		$event->setLine(0, $shopOwner);
