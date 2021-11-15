@@ -8,10 +8,7 @@ class DatabaseManager
 {
 	private $database;
 
-	/**
-	 * @param string $path
-	 */
-	public function __construct($path)
+	public function __construct(string $path)
 	{
 		$this->database = new \SQLite3($path);
 		$sql = "CREATE TABLE IF NOT EXISTS ChestShop(
@@ -31,30 +28,14 @@ class DatabaseManager
 		$this->database->exec($sql);
 	}
 
-	/**
-	 * register shop to database
-	 *
-	 * @param string $shopOwner
-	 * @param int $saleNum
-	 * @param int $price
-	 * @param int $productID
-	 * @param int $productMeta
-	 * @param Block $sign
-	 * @param Block $chest
-	 * @return bool
-	 */
-	public function registerShop($shopOwner, $saleNum, $price, $productID, $productMeta, $sign, $chest) : bool
+	public function registerShop(string $shopOwner, int $saleNum, int $price, int $productID, int $productMeta, Block $sign, Block $chest) : bool
 	{
 		return $this->database->exec("INSERT OR REPLACE INTO ChestShop (id, shopOwner, saleNum, price, productID, productMeta, signX, signY, signZ, chestX, chestY, chestZ) VALUES
 			((SELECT id FROM ChestShop WHERE signX = $sign->x AND signY = $sign->y AND signZ = $sign->z),
 			'$shopOwner', $saleNum, $price, $productID, $productMeta, $sign->x, $sign->y, $sign->z, $chest->x, $chest->y, $chest->z)");
 	}
 
-	/**
-	 * @param array $condition
-	 * @return \SQLite3Result|false
-	 */
-	public function selectByCondition(array $condition)
+	public function selectByCondition(array $condition) : bool|\SQLite3Result
 	{
 		$where = $this->formatCondition($condition);
 		$res = false;

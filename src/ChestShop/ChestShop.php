@@ -5,14 +5,12 @@ namespace ChestShop;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\item\ItemIds;
-use pocketmine\permission\Permission;
-use pocketmine\permission\PermissionManager;
-use pocketmine\Player;
+use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
 
 class ChestShop extends PluginBase
 {
-	public function onEnable()
+	public function onEnable() : void
 	{
 		$this->getServer()->getPluginManager()->registerEvents(new EventListener($this, new DatabaseManager($this->getDataFolder() . 'ChestShop.sqlite3')), $this);
 	}
@@ -26,7 +24,7 @@ class ChestShop extends PluginBase
 					return false;
 				$constants = array_keys((new \ReflectionClass(ItemIds::class))->getConstants());
 				foreach ($constants as $constant) {
-					if (stripos($constant, (string)$name) !== false) {
+					if (str_contains($constant, $name)) {
 						$id = constant(ItemIds::class."::$constant");
 						$constant = str_replace("_", " ", $constant);
 						$sender->sendMessage("ID:$id $constant");
@@ -49,10 +47,10 @@ class ChestShop extends PluginBase
 	public function getMaxPlayerShops(Player $player) : int {
 		if($player->hasPermission("chestshop.makeshop.unlimited"))
 			return PHP_INT_MAX;
-		/** @var Permission[] $perms */
-		$perms = array_merge(PermissionManager::getInstance()->getDefaultPermissions($player->isOp()), $player->getEffectivePermissions());
-		$perms = array_filter($perms, function($name) {
-			return (substr($name, 0, 19) === "chestshop.makeshop.") and (strpos($name, "unlimited") === false);
+		$player->recalculatePermissions();
+		$perms = $player->getEffectivePermissions();
+		$perms = array_filter($perms, function(string $name) : bool {
+			return str_starts_with($name, "chestshop.makeshop.") and !str_contains($name, "unlimited");
 		}, ARRAY_FILTER_USE_KEY);
 		if(count($perms) === 0)
 			return 0;

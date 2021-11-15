@@ -1,7 +1,7 @@
 name: ChestShop
 main: ChestShop\ChestShop
-version: 2.4.0
-api: [3.0.0]
+version: 3.0.0
+api: [4.0.0]
 load: POSTWORLD
 author: MinecrafterJPN
 description: A PocketMine-MP plugin which enables you to open a chest shop using a sign
