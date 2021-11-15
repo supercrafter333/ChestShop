@@ -19,24 +19,21 @@ permissions:
   chestshop:
     default: op
     description: "Allows using all the ChestShop things"
-    children:
-      chestshop.command:
-        default: op
-        description: "Allows using all the PocketMoney commands"
-        children:
-          chestshop.command.id:
-            default: true
-            description: "Allows searching item ID"
-      chestshop.makeshop:
-        default: op
-        description: "Allows making chest shops"
-        children:
-          chestshop.makeshop.1:
-            default: true
-            description: "Allows making 1 chest shop"
-          chestshop.makeshop.unlimited:
-            default: op
-            description: "Allows making unlimited chest shops"
-      chestshop.admin:
-        default: op
-        description: "Allows administration of any chest shops"
+  chestshop.command:
+    default: op
+    description: "Allows using all the PocketMoney commands"
+  chestshop.command.id:
+    default: true
+    description: "Allows searching item ID"
+  chestshop.makeshop:
+    default: op
+    description: "Allows making chest shops"
+  chestshop.makeshop.1:
+    default: true
+    description: "Allows making 1 chest shop"
+  chestshop.makeshop.unlimited:
+    default: op
+    description: "Allows making unlimited chest shops"
+  chestshop.admin:
+    default: op
+    description: "Allows administration of any chest shops"
