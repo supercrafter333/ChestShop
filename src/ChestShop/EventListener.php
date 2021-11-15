@@ -173,7 +173,7 @@ class EventListener implements Listener
 		$price = $signText->getLine(2);
 		$productData = explode(":", $signText->getLine(3));
 		/** @var int|bool $pID */
-		$pID = $this->isItem($id = array_shift($productData)) ? (int)$id : false;
+		$pID = $this->isItem($id = (int) array_shift($productData)) ? $id : false;
 		$pMeta = ($meta = array_shift($productData)) ? (int)$meta : 0;
 
 		$sign = $event->getBlock();
