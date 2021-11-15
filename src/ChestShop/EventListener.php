@@ -76,14 +76,14 @@ class EventListener implements Listener
 					return;
 				}
 
-				$item = ItemFactory::get((int)$shopInfo['productID'], (int)$shopInfo['productMeta'], (int)$shopInfo['saleNum']);
+				$item = ItemFactory::getInstance()->get((int)$shopInfo['productID'], (int)$shopInfo['productMeta'], (int)$shopInfo['saleNum']);
 				$chest->getInventory()->removeItem($item);
 				$player->getInventory()->addItem($item);
 				$sellerMoney = EconomyAPI::getInstance()->myMoney($shopInfo['shopOwner']);
 				if(EconomyAPI::getInstance()->reduceMoney($player->getName(), $shopInfo['price'], false, "ChestShop") === EconomyAPI::RET_SUCCESS and EconomyAPI::getInstance()->addMoney($shopInfo['shopOwner'], $shopInfo['price'], false, "ChestShop") === EconomyAPI::RET_SUCCESS) {
 					$player->sendMessage("Completed transaction");
 					if (($p = $this->plugin->getServer()->getPlayerExact($shopInfo['shopOwner'])) !== null) {
-						$p->sendMessage("{$player->getName()} purchased ".ItemFactory::get($pID, $pMeta)->getName()." for ".EconomyAPI::getInstance()->getMonetaryUnit().$shopInfo['price']);
+						$p->sendMessage("{$player->getName()} purchased ".ItemFactory::getInstance()->get($pID, $pMeta)->getName()." for ".EconomyAPI::getInstance()->getMonetaryUnit().$shopInfo['price']);
 					}
 				}else{
 					$player->getInventory()->removeItem($item);
@@ -192,7 +192,7 @@ class EventListener implements Listener
 			if($res !== false) {
 				$count[] = $res;
 				if($res["signX"] === $event->getBlock()->getPosition()->getX() and $res["signY"] === $event->getBlock()->getPosition()->getY() and $res["signZ"] === $event->getBlock()->getPosition()->getZ()) {
-					$productName = ItemFactory::get($pID, $pMeta)->getName();
+					$productName = ItemFactory::getInstance()->get($pID, $pMeta)->getName();
 					$event->setNewText(new SignText([
 						$shopOwner,
 						"Amount: $saleNum",
@@ -211,7 +211,7 @@ class EventListener implements Listener
 			return;
 		}
 
-		$productName = ItemFactory::get($pID, $pMeta)->getName();
+		$productName = ItemFactory::getInstance()->get($pID, $pMeta)->getName();
 		$event->setNewText(new SignText([
 			$shopOwner,
 			"Amount: $saleNum",
