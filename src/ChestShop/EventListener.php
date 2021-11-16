@@ -71,7 +71,7 @@ class EventListener implements Listener
 				if ($itemNum < $shopInfo['saleNum']) {
 					$player->sendMessage("This shop is out of stock!");
 					if (($p = $this->plugin->getServer()->getPlayerExact($shopInfo['shopOwner'])) !== null) {
-						$p->sendMessage("Your ChestShop is out of stock! Replenish Item: ".ItemFactory::get($pID, $pMeta)->getName());
+						$p->sendMessage("Your ChestShop is out of stock! Replenish Item: ".ItemFactory::getInstance()->get($pID, $pMeta)->getName());
 					}
 					return;
 				}
@@ -169,10 +169,10 @@ class EventListener implements Listener
 	{
 		$shopOwner = $event->getPlayer()->getName();
 		$signText = $event->getNewText();
-		$saleNum = $signText->getLine(1);
-		$price = $signText->getLine(2);
+		$saleNum = (int) $signText->getLine(1);
+		$price = (int) $signText->getLine(2);
 		$productData = explode(":", $signText->getLine(3));
-		/** @var int|bool $pID */
+		/** @var int|false $pID */
 		$pID = $this->isItem($id = (int) array_shift($productData)) ? $id : false;
 		$pMeta = ($meta = array_shift($productData)) ? (int)$meta : 0;
 
