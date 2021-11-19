@@ -4,7 +4,7 @@ namespace ChestShop;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\item\ItemIds;
+use pocketmine\item\StringToItemParser;
 use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
 
@@ -12,29 +12,34 @@ class ChestShop extends PluginBase
 {
 	public function onEnable() : void
 	{
-		$this->getServer()->getPluginManager()->registerEvents(new EventListener($this, new DatabaseManager($this->getDataFolder() . 'ChestShop.sqlite3')), $this);
+		$db = new DatabaseManager($this->getDataFolder() . 'ChestShop.sqlite3');
+		$db->tryUpgradeDB();
+		$this->getServer()->getPluginManager()->registerEvents(new EventListener($this, $db), $this);
 	}
 
 	public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool
 	{
-		switch ($command->getName()) {
-			case "id":
-				$name = array_shift($args);
-				if(empty($name))
-					return false;
-				$constants = array_keys((new \ReflectionClass(ItemIds::class))->getConstants());
-				foreach ($constants as $constant) {
-					if (str_contains($constant, $name)) {
-						$id = constant(ItemIds::class."::$constant");
-						$constant = str_replace("_", " ", $constant);
-						$sender->sendMessage("ID:$id $constant");
-					}
-				}
-				return true;
+		if(!isset($args[0]))
+			return false;
 
-			default:
-				return false;
+		if(StringToItemParser::getInstance()->parse($args[0]) !== null) {
+			$sender->sendMessage("ID: $args[0]");
+			return true;
 		}
+
+		$highest = "";
+		$highValue = 0;
+		foreach(StringToItemParser::getInstance()->getKnownAliases() as $alias) {
+			similar_text($alias, $args[0], $percent);
+			if($percent > $highValue) {
+				$highValue = $percent;
+				$highest = $alias;
+				if($percent === 100)
+					break;
+			}
+		}
+		$sender->sendMessage("ID: ".substr($highest, strlen('minecraft:')));
+		return true;
 	}
 
 	/**
