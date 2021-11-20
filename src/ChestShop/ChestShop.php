@@ -10,11 +10,18 @@ use pocketmine\plugin\PluginBase;
 
 class ChestShop extends PluginBase
 {
+	private DatabaseManager $db;
+
 	public function onEnable() : void
 	{
-		$db = new DatabaseManager($this->getDataFolder() . 'ChestShop.sqlite3');
-		$db->tryUpgradeDB();
-		$this->getServer()->getPluginManager()->registerEvents(new EventListener($this, $db), $this);
+		$this->db = new DatabaseManager($this, 256);
+		$this->db->tryUpgradeDB();
+		$this->getServer()->getPluginManager()->registerEvents(new EventListener($this, $this->db), $this);
+	}
+
+	public function onDisable() : void
+	{
+		$this->db->close();
 	}
 
 	public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool
