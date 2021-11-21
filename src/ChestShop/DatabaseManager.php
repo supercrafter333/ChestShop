@@ -18,20 +18,22 @@ class DatabaseManager extends DataProvider
 	{
 		parent::__construct($plugin, $cacheSize);
 		$this->db = new \SQLite3($plugin->getDataFolder() . 'ChestShop.sqlite3');
-		$this->db->exec("CREATE TABLE IF NOT EXISTS ChestShop(
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					shopOwner TEXT NOT NULL,
-					saleNum INTEGER NOT NULL,
-					price INTEGER NOT NULL,
-					productID INTEGER NOT NULL,
-					productMeta INTEGER NOT NULL,
-					signX INTEGER NOT NULL,
-					signY INTEGER NOT NULL,
-					signZ INTEGER NOT NULL,
-					chestX INTEGER NOT NULL,
-					chestY INTEGER NOT NULL,
-					chestZ INTEGER NOT NULL
-		)");
+
+		if(!$this->tryUpgradeDB()) {
+			$this->db->exec("CREATE TABLE IF NOT EXISTS ChestShopV2(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			shopOwner TEXT NOT NULL,
+			productAmount INTEGER NOT NULL,
+			price FLOAT NOT NULL,
+			productName TEXT NOT NULL,
+			signX INTEGER NOT NULL,
+			signY INTEGER NOT NULL,
+			signZ INTEGER NOT NULL,
+			chestX INTEGER NOT NULL,
+			chestY INTEGER NOT NULL,
+			chestZ INTEGER NOT NULL
+		);");
+		}
 
 		$this->sqlSaveShopInfo = $this->db->prepare("INSERT OR REPLACE INTO ChestShopV2 (id, shopOwner, productAmount, price, productName, signX, signY, signZ, chestX, chestY, chestZ) VALUES
 			((SELECT id FROM ChestShopV2 WHERE signX = :signX AND signY = :signY AND signZ = :signZ),
@@ -43,10 +45,10 @@ class DatabaseManager extends DataProvider
 
 	public function tryUpgradeDB() : bool
 	{
-		if($this->db->querySingle("SELECT count(name) FROM sqlite_Master WHERE type='table' AND name='ChestShopV2';") > 0)
+		if($this->db->querySingle("SELECT count(name) FROM sqlite_Master WHERE type='table' AND name='ChestShop';") <= 0)
 			return false; // we already upgraded
 
-		$this->db->exec("create table IF NOT EXISTS ChestShopV2(
+		$this->db->exec("CREATE TABLE IF NOT EXISTS ChestShopV2(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			shopOwner TEXT NOT NULL,
 			productAmount INTEGER NOT NULL,
