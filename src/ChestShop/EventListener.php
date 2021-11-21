@@ -2,228 +2,194 @@
 declare(strict_types=1);
 namespace ChestShop;
 
+use pocketmine\block\BaseSign;
 use pocketmine\block\Block;
+use pocketmine\block\BlockLegacyIds;
+use pocketmine\block\tile\Chest;
+use pocketmine\block\utils\SignText;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\block\SignChangeEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerInteractEvent;
-use pocketmine\item\ItemFactory;
-use pocketmine\level\Position;
+use pocketmine\item\StringToItemParser;
 use pocketmine\math\Vector3;
-use pocketmine\tile\Chest;
+use pocketmine\utils\AssumptionFailedError;
 use pocketmine\utils\TextFormat;
+use pocketmine\world\Position;
 
 class EventListener implements Listener
 {
-	private $plugin;
-	private $databaseManager;
+	private ChestShop $plugin;
+	private DatabaseManager $db;
 
 	public function __construct(ChestShop $plugin, DatabaseManager $databaseManager)
 	{
 		$this->plugin = $plugin;
-		$this->databaseManager = $databaseManager;
+		$this->db = $databaseManager;
 	}
 
-	public function onPlayerInteract(PlayerInteractEvent $event)
+	public function onPlayerInteract(PlayerInteractEvent $event) : void
 	{
 		$block = $event->getBlock();
 		$player = $event->getPlayer();
 
-		switch ($block->getID()) {
-			case Block::SIGN_POST:
-			case Block::WALL_SIGN:
-				if (($shopInfo = $this->databaseManager->selectByCondition([
-						"signX" => $block->getX(),
-						"signY" => $block->getY(),
-						"signZ" => $block->getZ()
-					])) === false) return;
-				$shopInfo = $shopInfo->fetchArray(SQLITE3_ASSOC);
-				if($shopInfo === false)
-					return;
-				if ($shopInfo['shopOwner'] === $player->getName()) {
-					$player->sendMessage("Cannot purchase from your own shop!");
-					return;
-				}else{
-					$event->setCancelled();
+		if($block instanceof BaseSign) {
+			if(($shopInfo = $this->db->getShopInfoBySign($block->getPosition())) === null)
+				return;
+
+			if ($shopInfo->shopOwner === $player->getName()) {
+				$player->sendMessage("Cannot purchase from your own shop!");
+				return;
+			}
+
+			$event->cancel();
+			$buyerMoney = $this->plugin->getServer()->getPluginManager()->getPlugin("PocketMoney")->getMoney($player->getName());
+			if (!is_numeric($buyerMoney)) { // Probably $buyerMoney is instance of SimpleError
+				$player->sendMessage("Couldn't acquire your money data!");
+				return;
+			}
+			if ($buyerMoney < $shopInfo->price) {
+				$player->sendMessage("Your money is not enough!");
+				return;
+			}
+
+			/** @var Chest $chest */
+			$chest = $player->getWorld()->getTile(new Vector3($shopInfo->chestX, $shopInfo->chestY, $shopInfo->chestZ));
+
+			$searchItem = StringToItemParser::getInstance()->parse($shopInfo->productName)->setCount($shopInfo->productAmount);
+			$items = $chest->getInventory()->all($searchItem);
+			$itemNum = 0;
+			foreach($items as $item) {
+				$itemNum += $item->getCount();
+			}
+			if ($itemNum < $shopInfo->productAmount) {
+				$player->sendMessage("This shop is out of stock!");
+				if (($p = $this->plugin->getServer()->getPlayerExact($shopInfo->shopOwner)) !== null) {
+					$p->sendMessage("Your ChestShop is out of stock! Replenish Item: ".$searchItem->getName());
 				}
-				$buyerMoney = $this->plugin->getServer()->getPluginManager()->getPlugin("PocketMoney")->getMoney($player->getName());
-				if (!is_numeric($buyerMoney)) { // Probably $buyerMoney is instance of SimpleError
-					$player->sendMessage("Couldn't acquire your money data!");
-					return;
-				}
-				if ($buyerMoney < $shopInfo['price']) {
-					$player->sendMessage("Your money is not enough!");
-					return;
-				}
-				/** @var Chest $chest */
-				$chest = $player->getLevel()->getTile(new Vector3($shopInfo['chestX'], $shopInfo['chestY'], $shopInfo['chestZ']));
-				$itemNum = 0;
-				$pID = $shopInfo['productID'];
-				$pMeta = $shopInfo['productMeta'];
-				for ($i = 0; $i < $chest->getInventory()->getSize(); $i++) {
-					$item = $chest->getInventory()->getItem($i);
-					// use getDamage() method to get metadata of item
-					if ($item->getID() === $pID and $item->getDamage() === $pMeta) $itemNum += $item->getCount();
-				}
-				if ($itemNum < $shopInfo['saleNum']) {
-					$player->sendMessage("This shop is out of stock!");
-					if (($p = $this->plugin->getServer()->getPlayer($shopInfo['shopOwner'])) !== null) {
-						$p->sendMessage("Your ChestShop is out of stock! Replenish Item: ".ItemFactory::get($pID, $pMeta)->getName());
-					}
-					return;
-				}
+				return;
+			}
 
-				$item = ItemFactory::get((int)$shopInfo['productID'], (int)$shopInfo['productMeta'], (int)$shopInfo['saleNum']);
-				$chest->getInventory()->removeItem($item);
-				$player->getInventory()->addItem($item);
-				$this->plugin->getServer()->getPluginManager()->getPlugin("PocketMoney")->payMoney($player->getName(), $shopInfo['shopOwner'], $shopInfo['price']);
+			$chest->getInventory()->removeItem($searchItem);
+			$player->getInventory()->addItem($searchItem);
+			$this->plugin->getServer()->getPluginManager()->getPlugin("PocketMoney")->payMoney($player->getName(), $shopInfo->shopOwner, $shopInfo->price);
+			$player->sendMessage("Completed transaction");
+			if (($p = $this->plugin->getServer()->getPlayerExact($shopInfo->shopOwner)) !== null) {
+				$p->sendMessage("{$player->getName()} purchased {$searchItem->getName()} for $shopInfo->price PM");
+			}
+		}elseif($block instanceof \pocketmine\block\Chest) {
+			$shopInfo = $this->db->getShopInfoByChest($block->getPosition());
 
-				$player->sendMessage("Completed transaction");
-				if (($p = $this->plugin->getServer()->getPlayer($shopInfo['shopOwner'])) !== null) {
-					$p->sendMessage("{$player->getName()} purchased ".ItemFactory::get($pID, $pMeta)->getName()." for ".$shopInfo['price']."PM");
-				}
-				break;
-
-			case Block::CHEST:
-				$shopInfo = $this->databaseManager->selectByCondition([
-					"chestX" => $block->getX(),
-					"chestY" => $block->getY(),
-					"chestZ" => $block->getZ()
-				]);
-				if($shopInfo === false)
-					break;
-				$shopInfo = $shopInfo->fetchArray(SQLITE3_ASSOC);
-				if ($shopInfo !== false and $shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
-					$player->sendMessage("This chest has been protected!");
-					$event->setCancelled();
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
-
-	public function onPlayerBreakBlock(BlockBreakEvent $event)
-	{
-		$block = $event->getBlock();
-		$player = $event->getPlayer();
-
-		switch ($block->getID()) {
-			case Block::SIGN_POST:
-			case Block::WALL_SIGN:
-				$condition = [
-					"signX" => $block->getX(),
-					"signY" => $block->getY(),
-					"signZ" => $block->getZ()
-				];
-				$shopInfo = $this->databaseManager->selectByCondition($condition);
-				if ($shopInfo !== false) {
-					$shopInfo = $shopInfo->fetchArray();
-					if($shopInfo === false)
-						break;
-					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
-						$player->sendMessage("This sign has been protected!");
-						$event->setCancelled();
-					} else {
-						$this->databaseManager->deleteByCondition($condition);
-						$player->sendMessage("Closed your ChestShop");
-					}
-				}
-				break;
-
-			case Block::CHEST:
-				$condition = [
-					"chestX" => $block->getX(),
-					"chestY" => $block->getY(),
-					"chestZ" => $block->getZ()
-				];
-				$shopInfo = $this->databaseManager->selectByCondition($condition);
-				if ($shopInfo !== false) {
-					$shopInfo = $shopInfo->fetchArray();
-					if($shopInfo === false)
-						break;
-					if ($shopInfo['shopOwner'] !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
-						$player->sendMessage("This chest has been protected!");
-						$event->setCancelled();
-					} else {
-						$this->databaseManager->deleteByCondition($condition);
-						$player->sendMessage("Closed your ChestShop");
-					}
-				}
-				break;
-		}
-	}
-
-	public function onSignChange(SignChangeEvent $event)
-	{
-		$shopOwner = $event->getPlayer()->getName();
-		$saleNum = $event->getLine(1);
-		$price = $event->getLine(2);
-		$productData = explode(":", $event->getLine(3));
-		/** @var int|bool $pID */
-		$pID = $this->isItem($id = array_shift($productData)) ? (int)$id : false;
-		$pMeta = ($meta = array_shift($productData)) ? (int)$meta : 0;
-
-		$sign = $event->getBlock();
-
-		// Check sign format...
-		if ($event->getLine(0) !== "") return;
-		if (!is_numeric($saleNum) or $saleNum <= 0) return;
-		if (!is_numeric($price) or $price < 0) return;
-		if ($pID === false) return;
-		if (($chest = $this->getSideChest($sign)) === false) return;
-		$shops = $this->databaseManager->selectByCondition(["shopOwner" => "'$shopOwner'"]);
-		$res = true;
-		$count = [];
-		while ($res !== false) {
-			$res = $shops->fetchArray(SQLITE3_ASSOC);
-			if($res !== false) {
-				$count[] = $res;
-				if($res["signX"] === $event->getBlock()->getX() and $res["signY"] === $event->getBlock()->getY() and $res["signZ"] === $event->getBlock()->getZ()) {
-					$productName = ItemFactory::get($pID, $pMeta)->getName();
-					$event->setLine(0, $shopOwner);
-					$event->setLine(1, "Amount: $saleNum");
-					$event->setLine(2, "Price: $price");
-					$event->setLine(3, $productName);
-
-					$this->databaseManager->registerShop($shopOwner, $saleNum, $price, $pID, $pMeta, $sign, $chest);
-					return;
-				}
+			if ($shopInfo !== null and $shopInfo->shopOwner !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
+				$player->sendMessage("This chest is protected! Please tap on the sign to trade.");
+				$event->cancel();
 			}
 		}
-		if(empty($event->getLine(3))) return;
-		if(count($count) >= $this->plugin->getMaxPlayerShops($event->getPlayer()) and !$event->getPlayer()->hasPermission("chestshop.admin")) {
+	}
+
+	public function onBlockBreak(BlockBreakEvent $event) : void
+	{
+		$block = $event->getBlock();
+		$player = $event->getPlayer();
+
+		if($block instanceof BaseSign) {
+			$shopInfo = $this->db->getShopInfoBySign($block->getPosition());
+
+			if($shopInfo === null)
+				return;
+
+			if ($shopInfo->shopOwner !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
+				$player->sendMessage("This sign is protected!");
+				$event->cancel();
+			} else {
+				$this->db->deleteShopInfo($shopInfo);
+				$player->sendMessage("Closed your ChestShop");
+			}
+		}elseif($block instanceof \pocketmine\block\Chest) {
+
+			$shopInfo = $this->db->getShopInfoByChest($block->getPosition());
+
+			if($shopInfo === null)
+				return;
+
+			if ($shopInfo->shopOwner !== $player->getName() and !$player->hasPermission("chestshop.admin")) {
+				$player->sendMessage("This chest is protected!");
+				$event->cancel();
+			} else {
+				$this->db->deleteShopInfo($shopInfo);
+				$player->sendMessage("Closed your ChestShop");
+			}
+		}
+	}
+
+	public function onSignChange(SignChangeEvent $event) : void
+	{
+		$signText = $event->getNewText();
+		if ($signText->getLine(0) !== "") return;
+		if($signText->getLine(3) === "") return; // only start doing work at last line of sign
+
+		$productAmount = (int) $signText->getLine(1);
+		$price = (int) $signText->getLine(2);
+		$itemId = $signText->getLine(3);
+		$this->isItem($itemId) ?: $itemId = null;
+
+		if ($productAmount <= 0) return;
+		if ($price < 0) return;
+		if ($itemId === null) return;
+		if (($chest = $this->getSideChest($sign = $event->getBlock()->getPosition())?->getPosition()->floor()) === null) return;
+		$sign = $sign->floor();
+
+		$shopOwner = $event->getPlayer()->getName();
+
+		$shopDataByOwner = $this->db->getShopsByOwner($shopOwner);
+		foreach($shopDataByOwner as $shopInfo) {
+			if($shopInfo->signX === $sign->x AND $shopInfo->signY === $sign->y AND $shopInfo->signZ === $sign->z) { // do not check permissions if editing existing shop
+				if(($productName = (StringToItemParser::getInstance()->parse($itemId))?->getName()) === null)
+					throw new AssumptionFailedError("Item does not exist"); // it should exist at this stage
+				$event->setNewText(new SignText([
+					$shopOwner,
+					"Amount: $productAmount",
+					"Price: $price PM",
+					$productName
+				]));
+				$this->db->registerShop($shopOwner, $productAmount, $price, $itemId, $sign, $chest);
+				return;
+			}
+		}
+
+		if($this->plugin->getMaxPlayerShops($event->getPlayer())+1 <= count($shopDataByOwner) or $event->getPlayer()->hasPermission("chestshop.admin") and $event->getPlayer()->hasPermission("chestshop.makeshop.unlimited")) {
 			$event->getPlayer()->sendMessage(TextFormat::RED."You don't have permission to make more shops");
 			return;
 		}
 
-		$productName = ItemFactory::get($pID, $pMeta)->getName();
-		$event->setLine(0, $shopOwner);
-		$event->setLine(1, "Amount: $saleNum");
-		$event->setLine(2, "Price: $price");
-		$event->setLine(3, $productName);
+		$productName = StringToItemParser::getInstance()->parse($itemId)->getName();
+		$event->setNewText(new SignText([
+			$shopOwner,
+			"Amount: $productAmount",
+			"Price: $price PM",
+			$productName
+		]));
 
-		$this->databaseManager->registerShop($shopOwner, $saleNum, $price, $pID, $pMeta, $sign, $chest);
+		$this->db->registerShop($shopOwner, $productAmount, $price, $itemId, $sign, $chest);
 	}
 
-	private function getSideChest(Position $pos)
+	private function getSideChest(Position $pos) : ?Block
 	{
-		$block = $pos->getLevel()->getBlock(new Vector3($pos->getX() + 1, $pos->getY(), $pos->getZ()));
-		if ($block->getID() === Block::CHEST) return $block;
-		$block = $pos->getLevel()->getBlock(new Vector3($pos->getX() - 1, $pos->getY(), $pos->getZ()));
-		if ($block->getID() === Block::CHEST) return $block;
-		$block = $pos->getLevel()->getBlock(new Vector3($pos->getX(), $pos->getY() - 1, $pos->getZ()));
-		if ($block->getID() === Block::CHEST) return $block;
-		$block = $pos->getLevel()->getBlock(new Vector3($pos->getX(), $pos->getY(), $pos->getZ() + 1));
-		if ($block->getID() === Block::CHEST) return $block;
-		$block = $pos->getLevel()->getBlock(new Vector3($pos->getX(), $pos->getY(), $pos->getZ() - 1));
-		if ($block->getID() === Block::CHEST) return $block;
-		return false;
+		$block = $pos->getWorld()->getBlock(new Vector3($pos->getX() + 1, $pos->getY(), $pos->getZ()));
+		if ($block->getID() === BlockLegacyIds::CHEST) return $block;
+		$block = $pos->getWorld()->getBlock(new Vector3($pos->getX() - 1, $pos->getY(), $pos->getZ()));
+		if ($block->getID() === BlockLegacyIds::CHEST) return $block;
+		$block = $pos->getWorld()->getBlock(new Vector3($pos->getX(), $pos->getY() - 1, $pos->getZ()));
+		if ($block->getID() === BlockLegacyIds::CHEST) return $block;
+		$block = $pos->getWorld()->getBlock(new Vector3($pos->getX(), $pos->getY(), $pos->getZ() + 1));
+		if ($block->getID() === BlockLegacyIds::CHEST) return $block;
+		$block = $pos->getWorld()->getBlock(new Vector3($pos->getX(), $pos->getY(), $pos->getZ() - 1));
+		if ($block->getID() === BlockLegacyIds::CHEST) return $block;
+		return null;
 	}
 
-	private function isItem($id)
+	private function isItem(string &$id) : bool
 	{
-		return ItemFactory::isRegistered((int) $id);
+		return ($id = StringToItemParser::getInstance()->parse($id)?->getVanillaName()) !== null;
 	}
 } 
