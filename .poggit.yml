@@ -3,4 +3,5 @@ projects:
   ChestShop:
     path: ""
     icon: "icon.png"
+    lint: false
 ...
