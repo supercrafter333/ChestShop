@@ -12,10 +12,13 @@ class ChestShop extends PluginBase
 {
 	private DatabaseManager $db;
 
-	public function onEnable() : void
+	public function onLoad() : void
 	{
 		$this->db = new DatabaseManager($this, 256);
-		$this->db->tryUpgradeDB();
+	}
+
+	public function onEnable() : void
+	{
 		$this->getServer()->getPluginManager()->registerEvents(new EventListener($this, $this->db), $this);
 	}
 
